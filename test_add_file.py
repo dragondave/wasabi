@@ -13,3 +13,10 @@ def test_webm():
     node = add_file.create_node(filename="fixtures/bigbuck_webm",
                                 license="Public Domain",
                                 copyright_holder="X")
+
+def test_mp3():
+    node = add_file.create_node(filename="fixtures/bigbuck_webm",
+                                file_class = add_file.TranscodeAudio,
+                                license="Public Domain",
+                                copyright_holder="X")
+

@@ -7,7 +7,7 @@ from le_utils.constants import licenses
 from urllib.parse import urlsplit
 import hashlib
 import os
-from transcode import transcode_video
+from transcode import transcode_video, transcode_audio
 
 class UnidentifiedFileType(Exception):
     pass
@@ -33,7 +33,6 @@ node_dict = {VideoFile: VideoNode,
              DocumentFile: DocumentNode}
 
 # Long-Range TODOs
-# -- detect and re-encode non-MP4 videos, non-MP3 audio, etc.
 # -- package up images as zip files (using build_carousel)
 
 def guess_extension(url):
@@ -109,11 +108,16 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
         # there is a reasonable chance that the file isn't actually a suitable filetype
         # and that guess_type will raise an UnidentifiedFileType error.
     assert file_class
+    print (file_class)
 
     # Transcode video if necessary
     if file_class == TranscodeVideo:
         file_class = VideoFile
         filename = transcode_video(filename)
+
+    if file_class == TranscodeAudio:
+        file_class = AudioFile
+        filename = transcode_audio(filename)
 
     # TODO - consider non-MP3 audio files
 
@@ -157,6 +161,7 @@ def guess_type(mime_type="",
     content_mapping = {"audio/mp3": AudioFile,
                        "video/mp4": VideoFile,
                        "audio/mp4": VideoFile,
+                       "video/webm": TranscodeVideo,
                        "application/pdf": DocumentFile,
                        }
 
@@ -165,8 +170,9 @@ def guess_type(mime_type="",
 
     extension_mapping = {".mp3": AudioFile,
                          ".mp4": VideoFile,
+                         ".webm": TranscodeVideo,
+                         ".m4v": TranscodeVideo,
                          ".pdf": DocumentFile,
-                         # m4v!
                          # "zip": HTMLZipFile,  # primarily for carousels
                          }
 
