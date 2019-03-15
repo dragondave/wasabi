@@ -95,8 +95,8 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
     if file_class is None:
         with open(filename, "rb") as f:
             magic_bytes = f.read(8)[:8]  # increase if we use python_magic
-        file_class = guess_type(content_type=mime,
-                                extension=guess_extension(url),
+        file_class = guess_type(mime_type=mime,
+                                extension=guess_extension(url or filename),
                                 magic=magic_bytes)
         # there is a reasonable chance that the file isn't actually a suitable filetype
         # and that guess_type will raise an UnidentifiedFileType error.
@@ -170,7 +170,7 @@ def guess_type(mime_type="",
 
     # TODO -- consider using python_magic library
 
-    raise UnidentifiedFileType(str([content_type, extension]))
+    raise UnidentifiedFileType(str([mime_type, extension]))
 
 def get_type_and_response(url):
     """Guess the type of a URL and preserve the response to avoid downloading twice"""
