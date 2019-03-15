@@ -54,8 +54,8 @@ def download_file(url):
     response = requests.get(url, stream=True)
     filename = DOWNLOAD_FOLDER + "/" + create_filename(url)
     if not os.path.exists(filename):
-        print ("Downloading to {}".format(filename))
-        print ("{} bytes".format(response.headers.get("content-length")))
+        #print ("Downloading to {}".format(filename))
+        #print ("{} bytes".format(response.headers.get("content-length")))
         try:
             with open(filename, "wb") as f:
                 # https://www.reddit.com/r/learnpython/comments/27ba7t/requests_library_doesnt_download_directly_to_disk/
@@ -70,10 +70,10 @@ def download_file(url):
                 pass
             raise
 
-            print ("{} bytes written".format(response.headers.get("content-length")))
     else:
         print ("Already exists in cache")
-    return filename, response.headers.get("content-type")
+    content_type = response.headers.get('Content-Type', "").split(";")[0].strip()
+    return filename, content_type
 
 def create_node(file_class=None, url=None, filename=None, title=None, license=None, copyright_holder=None, description=""):
     """
@@ -171,23 +171,6 @@ def guess_type(mime_type="",
     # TODO -- consider using python_magic library
 
     raise UnidentifiedFileType(str([mime_type, extension]))
-
-def get_type_and_response(url):
-    """Guess the type of a URL and preserve the response to avoid downloading twice"""
-    response = requests.get(url)
-    response.raise_for_status()
-    # get the bit before the semi-colon -- should be audio/mp3 or similar
-    content_type = response.headers.get('Content-Type', "").split(";")[0].strip()
-    extension = guess_extension(response.url)
-    magic = response.content[:4]
-    try:
-        file_type = guess_type(content_type, extension, magic)
-    except UnidentifiedFileType:
-        file_type = None
-    return [file_type, response]
-
-def guess_by_url(url):
-    return get_type_and_response(url)[0]
 
 if __name__ == "__main__":
     print(create_node(DocumentFile, "http://www.pdf995.com/samples/pdf.pdf", license=licenses.CC_BY_NC_ND, copyright_holder="foo"))
