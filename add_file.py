@@ -7,9 +7,16 @@ from le_utils.constants import licenses
 from urllib.parse import urlsplit
 import hashlib
 import os
+from transcode import transcode_video
 
 class UnidentifiedFileType(Exception):
     pass
+
+class TranscodeVideo(object):
+    "Placeholder filetype for videos that require transcoding"
+
+class TranscodeAudio(object):
+    "Placeholder filetype for audio that requires transcoding"
 
 DOWNLOAD_FOLDER = "__downloads"  # this generates completed files
 metadata = {}
@@ -72,6 +79,7 @@ def download_file(url):
 
     else:
         print ("Already exists in cache")
+    # get the bit before the ; in the content-type, if there is one
     content_type = response.headers.get('Content-Type', "").split(";")[0].strip()
     return filename, content_type
 
@@ -101,6 +109,13 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
         # there is a reasonable chance that the file isn't actually a suitable filetype
         # and that guess_type will raise an UnidentifiedFileType error.
     assert file_class
+
+    # Transcode video if necessary
+    if file_class == TranscodeVideo:
+        file_class = VideoFile
+        filename = transcode_video(filename)
+
+    # TODO - consider non-MP3 audio files
 
     # Ensure file has correct extension for the type of file we think it is:
     # this is a requirement from sushichef.
@@ -161,6 +176,7 @@ def guess_type(mime_type="",
     magic_mapping = {b"\xFF\xFB": AudioFile,
                      b"ID3": AudioFile,
                      b"%PDF": DocumentFile,
+                     b"\x1A\x45\xDF\xA3": TranscodeVideo,
                      # b"PK": HTMLZipFile,
                      }
 
