@@ -94,7 +94,7 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
 
     if file_class is None:
         with open(filename, "rb") as f:
-            magic_bytes = f.read(8)[:8]
+            magic_bytes = f.read(8)[:8]  # increase if we use python_magic
         file_class = guess_type(content_type=mime,
                                 extension=guess_extension(url),
                                 magic=magic_bytes)
@@ -148,10 +148,9 @@ def guess_type(mime_type="",
     if mime_type in content_mapping:
         return content_mapping[mime_type]
 
-    # TODO -- not sure if we send .mp4, rather than mp4 usually...
-    extension_mapping = {"mp3": AudioFile,
-                         "mp4": VideoFile,
-                         "pdf": DocumentFile,
+    extension_mapping = {".mp3": AudioFile,
+                         ".mp4": VideoFile,
+                         ".pdf": DocumentFile,
                          # m4v!
                          # "zip": HTMLZipFile,  # primarily for carousels
                          }
