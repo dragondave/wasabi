@@ -6,7 +6,7 @@ import requests
 import hashlib
 import shutil
 import os
-import add_file
+from wasabi import add_file
 
 html = """
 <!DOCTYPE html>

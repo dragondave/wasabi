@@ -7,7 +7,7 @@ from le_utils.constants import licenses
 from urllib.parse import urlsplit
 import hashlib
 import os
-from transcode import transcode_video, transcode_audio
+from wasabi.transcode import transcode_video, transcode_audio
 
 class UnidentifiedFileType(Exception):
     pass
