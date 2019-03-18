@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup, NavigableString
 from bs4.element import Tag
 from urllib.parse import urlsplit
 from itertools import zip_longest
-from localise import requests
+import requests
 import hashlib
 import shutil
 import os
@@ -33,7 +33,7 @@ html = """
       margin: 0px;
       font-size: 0px;
     }}
-    
+
     .big {{
       height: 80vh;
       width: 100%;
@@ -101,19 +101,19 @@ filenames = [x.strip() for x in filenames]
 def get_url(url, filename):
     r = requests.get(url, verify=False)
     content = r.content
-    
+
     with open(filename, "wb") as f:
         try:
             f.write(content)
         except requests.exceptions.InvalidURL:
-            pass    
-    
+            pass
+
 def create_carousel_zip(filenames):
     # download files and get disk filenames
-    
-    def hash_url(url):  
+
+    def hash_url(url):
         return hashlib.sha1((url).encode('utf-8')).hexdigest() + ".jpg"
-    
+
     hashed_filenames = [hash_url(filename) for filename in filenames]
     hashed_pathnames = [DOWNLOAD_FOLDER + "/" + x for x in hashed_filenames]
 
@@ -121,16 +121,16 @@ def create_carousel_zip(filenames):
     try:
         shutil.rmtree(DOWNLOAD_FOLDER)
     except: # ignore if not present
-        pass 
-    
+        pass
+
     os.mkdir(DOWNLOAD_FOLDER)
-    
+
     # create html
     create_carousel(hashed_filenames)
-    
+
     for url, path in zip(filenames, hashed_pathnames):
         get_url(url, path)
-    
+
     # create zip file
     ziphash = hash_url(str(filenames))
     zipfile_name = shutil.make_archive("__"+DOWNLOAD_FOLDER+"/"+ziphash, "zip", # automatically adds .zip extension!
@@ -140,7 +140,7 @@ def create_carousel_zip(filenames):
     assert "downloads" in DOWNLOAD_FOLDER
     shutil.rmtree(DOWNLOAD_FOLDER)
 
-    return zipfile_name    
+    return zipfile_name
 
 def create_carousel(filenames):
     """Take a list of filenames and create a HTML5App.
@@ -151,17 +151,17 @@ def create_carousel(filenames):
         left = (page - 1) % num_files
         right = (page + 1) % num_files
         strip = list(range(page, num_files)) + list(range(0, page))
-        
+
         strip_segment = "        <a href='{i}.html' class='image'><img src='{image}'></a>"
         strip_list = []
         for i in strip:
             strip_list.append(strip_segment.format(i=i, image=filenames[i]))
         strip_html = '\n'.join(strip_list)
-    
+
         with open(DOWNLOAD_FOLDER+"/{page}.html".format(page=page), "w") as f:
             html_full = html.format(left=left, right=right, strip=strip_html, big=filenames[page])
             f.write(html_full)
-            
+
     shutil.copyfile(DOWNLOAD_FOLDER+"/0.html", DOWNLOAD_FOLDER+"/index.html")
 
 def create_carousel_node(filenames, **metadata):

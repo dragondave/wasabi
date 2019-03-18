@@ -108,3 +108,4 @@ venv.bak/
 
 # specific
 *_transcoded.*
+__carousel_downloads
