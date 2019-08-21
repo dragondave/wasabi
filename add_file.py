@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 import hashlib
 import os
 from wasabi.transcode import transcode_video, transcode_audio
+import subprocess
 
 class UnidentifiedFileType(Exception):
     pass
@@ -17,6 +18,8 @@ class TranscodeVideo(object):
 
 class TranscodeAudio(object):
     "Placeholder filetype for audio that requires transcoding"
+
+SUBTITLE_LANGUAGE = "en"
 
 DOWNLOAD_FOLDER = "__downloads"  # this generates completed files
 metadata = {}
@@ -66,8 +69,8 @@ def download_file(url):
     setup_directory()
     filename = DOWNLOAD_FOLDER + "/" + create_filename(url)
     if not os.path.exists(filename):
-        #print ("Downloading to {}".format(filename))
-        #print ("{} bytes".format(response.headers.get("content-length")))
+        print ("Downloading to {}".format(filename))
+        print ("{} bytes".format(response.headers.get("content-length")))
         try:
             with open(filename, "wb") as f:
                 # https://www.reddit.com/r/learnpython/comments/27ba7t/requests_library_doesnt_download_directly_to_disk/
@@ -88,7 +91,10 @@ def download_file(url):
     content_type = response.headers.get('Content-Type', "").split(";")[0].strip()
     return filename, content_type
 
-def create_node(file_class=None, url=None, filename=None, title=None, license=None, copyright_holder=None, description=""):
+def create_file(*args, **kwargs):
+    return create_node(*args, as_file=True, **kwargs)
+
+def create_node(file_class=None, url=None, filename=None, title=None, license=None, copyright_holder=None, description="", as_file=False):
     """
     Create a content node from either a URL or filename.
     Which content node is determined by:
@@ -107,10 +113,15 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
 
     if file_class is None:
         with open(filename, "rb") as f:
-            magic_bytes = f.read(8)[:8]  # increase if we use python_magic
-        file_class = guess_type(mime_type=mime,
-                                extension=guess_extension(url or filename),
-                                magic=magic_bytes)
+            magic_bytes = f.read(10)[:10]  # increase if we use python_magic
+        try:
+            file_class = guess_type(mime_type=mime,
+                                    extension=guess_extension(url or filename),
+                                    magic=magic_bytes,
+                                    filename=filename)
+        except Exception:
+            print(url, filename)
+            raise
         # there is a reasonable chance that the file isn't actually a suitable filetype
         # and that guess_type will raise an UnidentifiedFileType error.
     assert file_class
@@ -132,7 +143,8 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
     extensions = {VideoFile: ".mp4",
                   AudioFile: ".mp3",
                   DocumentFile: ".pdf",
-                  HTMLZipFile: ".zip",}
+                  HTMLZipFile: ".zip",
+                  SubtitleFile: ".vtt"}
     extension = extensions[file_class]
     if not filename.endswith(extension):
         new_filename = filename + extension
@@ -144,11 +156,14 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
     # Do not permit zero-byte files
     assert(os.path.getsize(filename))
 
-    kwargs = {VideoFile: {"ffmpeg_settings": {"max_width": 480, "crf": 28}},
-              AudioFile: {},
-              DocumentFile: {},
-              HTMLZipFile: {}}
-    file_instance = file_class(filename, **kwargs[file_class])
+    keywords = {VideoFile: {"ffmpeg_settings": {"max_width": 480, "crf": 28}},
+                AudioFile: {},
+                DocumentFile: {},
+                HTMLZipFile: {},
+                SubtitleFile: {"language": SUBTITLE_LANGUAGE}}
+    file_instance = file_class(filename, **keywords[file_class])
+    if as_file:
+        return file_instance
 
     node_class = node_dict[file_class]
 
@@ -162,13 +177,17 @@ def create_node(file_class=None, url=None, filename=None, title=None, license=No
 
 def guess_type(mime_type="",
                extension="",
-               magic=b""):
+               magic=b"",
+               filename=None):
 
     content_mapping = {"audio/mp3": AudioFile,
                        "video/mp4": VideoFile,
                        "audio/mp4": VideoFile,
                        "video/webm": TranscodeVideo,
                        "application/pdf": DocumentFile,
+                       "video/quicktime": TranscodeVideo,
+                       "video/x-flv": TranscodeVideo,
+
                        }
 
     if mime_type in content_mapping:
@@ -179,6 +198,7 @@ def guess_type(mime_type="",
                          ".webm": TranscodeVideo,
                          ".m4v": TranscodeVideo,
                          ".pdf": DocumentFile,
+                         ".vtt": SubtitleFile,
                          # "zip": HTMLZipFile,  # primarily for carousels
                          }
 
@@ -189,6 +209,7 @@ def guess_type(mime_type="",
                      b"ID3": AudioFile,
                      b"%PDF": DocumentFile,
                      b"\x1A\x45\xDF\xA3": TranscodeVideo,
+                     b"WEBVTT": SubtitleFile,
                      # b"PK": HTMLZipFile,
                      }
 
@@ -196,9 +217,21 @@ def guess_type(mime_type="",
         if magic.startswith(mapping):
             return magic_mapping[mapping]
 
+    # NOT PORTABLE.
+    # filename: mime/type; encoding
+    file_response = subprocess.check_output(["file", "-i", filename]).decode('utf-8')
+    not_filename = file_response.partition(": ")[2]
+    file_mime = not_filename.partition(";")[0]
+
+    if file_mime in content_mapping:
+        return content_mapping[file_mime]
+
     # TODO -- consider using python_magic library
 
-    raise UnidentifiedFileType(str([mime_type, extension]))
+    raise UnidentifiedFileType(str([mime_type, extension, magic, file_mime]))
+
+
 
 if __name__ == "__main__":
-    print(create_node(DocumentFile, "http://www.pdf995.com/samples/pdf.pdf", license=licenses.CC_BY_NC_ND, copyright_holder="foo"))
+    pass
+    #print(create_node(DocumentFile, "http://www.pdf995.com/samples/pdf.pdf", license=licenses.CC_BY_NC_ND, copyright_holder="foo"))
